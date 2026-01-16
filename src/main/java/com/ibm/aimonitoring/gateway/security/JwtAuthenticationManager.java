@@ -14,7 +14,6 @@ import reactor.core.publisher.Mono;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Custom authentication manager for JWT token validation
@@ -45,7 +44,7 @@ public class JwtAuthenticationManager implements ReactiveAuthenticationManager {
             
             List<SimpleGrantedAuthority> authorities = roles.stream()
                 .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toList());
+                .toList();
             
             return Mono.just(new UsernamePasswordAuthenticationToken(username, token, authorities));
         } catch (Exception e) {
