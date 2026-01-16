@@ -1,0 +1,229 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  
+  # Exclude Spring Security auto-configuration to use custom JWT filter
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration
+  
+  cloud:
+    gateway:
+      routes:
+        # Authentication Service Routes
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/auth/**
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /api/v1/auth/(?<segment>.*)
+                replacement: /api/auth/${segment}
+            - name: CircuitBreaker
+              args:
+                name: authServiceCircuitBreaker
+                fallbackUri: forward:/fallback/auth-service
+        
+        # Log Search Routes (Log Processor)
+        - id: log-search-service
+          uri: ${LOG_PROCESSOR_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/logs/search**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: logProcessorCircuitBreaker
+                fallbackUri: forward:/fallback/log-processor
+        
+        # Log Ingestion Service Routes
+        - id: log-ingestion-service
+          uri: ${LOG_INGESTION_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/logs/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: logIngestionCircuitBreaker
+                fallbackUri: forward:/fallback/log-ingestion
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+        
+        # Dashboard Routes (must come before general log routes)
+        - id: dashboard-service
+          uri: ${LOG_PROCESSOR_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/dashboard/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: dashboardCircuitBreaker
+                fallbackUri: forward:/fallback/dashboard
+        
+        # Log Processor Service Routes
+        - id: log-processor-service
+          uri: ${LOG_PROCESSOR_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/processor/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: logProcessorCircuitBreaker
+                fallbackUri: forward:/fallback/log-processor
+        
+        # Alert Service Routes
+        - id: alert-service
+          uri: ${ALERT_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/alerts/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: alertServiceCircuitBreaker
+                fallbackUri: forward:/fallback/alert-service
+        
+        # ML Service Routes
+        - id: ml-service
+          uri: ${ML_SERVICE_URL:http://localhost:8000}
+          predicates:
+            - Path=/api/v1/ml/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: mlServiceCircuitBreaker
+                fallbackUri: forward:/fallback/ml-service
+      
+      # Global CORS configuration
+      # Note: CORS is configured programmatically in CorsConfig.java
+      # using CORS_ALLOWED_ORIGINS environment variable
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: 
+              - "http://localhost:4200"
+              - "http://localhost:3000"
+              - "http://localhost:80"
+              - "http://localhost"
+              - "http://frontend:80"
+              - "http://frontend"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+      
+      # Default filters applied to all routes
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
+  # Redis configuration for rate limiting
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:changeme}
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET}
+
+# Resilience4j Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      authServiceCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      
+      logIngestionCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      
+      logProcessorCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      
+      alertServiceCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      
+      mlServiceCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+
+  timelimiter:
+    instances:
+      authServiceCircuitBreaker:
+        timeoutDuration: 3s
+      logIngestionCircuitBreaker:
+        timeoutDuration: 3s
+      logProcessorCircuitBreaker:
+        timeoutDuration: 3s
+      alertServiceCircuitBreaker:
+        timeoutDuration: 3s
+      mlServiceCircuitBreaker:
+        timeoutDuration: 5s
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+
+# Logging
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web: DEBUG
+    com.ibm.aimonitoring: DEBUG
+
+# Made with Bob
