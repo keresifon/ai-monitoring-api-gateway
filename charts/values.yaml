@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: ghcr.io/OWNER/ai-monitoring-api-gateway
+  repository: ghcr.io/keresifon/ai-monitoring-api-gateway
   pullPolicy: IfNotPresent
   tag: "latest"
 
