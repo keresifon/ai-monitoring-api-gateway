@@ -1,16 +1,16 @@
-replicaCount: 2
+replicaCount: 1
 
 image:
-  repository: ghcr.io/OWNER/ai-monitoring-api-gateway
+  repository: ghcr.io/keresifon/ai-monitoring-api-gateway
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: "1.0.1"
 
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
 serviceAccount:
-  create: true
+  create: false
   annotations: {}
   name: ""
 
@@ -18,55 +18,63 @@ service:
   type: ClusterIP
   port: 8080
 
-ingress:
-  enabled: false
-  className: "nginx"
-  annotations: {}
-  hosts:
-    - host: api.ai-monitoring.local
-      paths:
-        - path: /
-          pathType: Prefix
-  tls: []
-
 resources:
   limits:
     cpu: 500m
     memory: 512Mi
   requests:
-    cpu: 100m
+    cpu: 50m
     memory: 256Mi
 
 autoscaling:
   enabled: false
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 10
   targetCPUUtilizationPercentage: 80
 
 env:
   SPRING_PROFILES_ACTIVE: kubernetes
-  REDIS_HOST: redis
-  REDIS_PORT: "6379"
-  AUTH_SERVICE_URL: http://auth-service:8084
-  LOG_INGESTION_URL: http://log-ingestion:8081
-  LOG_PROCESSOR_URL: http://log-processor:8082
-  ALERT_SERVICE_URL: http://alert-service:8083
-  ML_SERVICE_URL: http://ml-service:8000
 
+# Backend service URLs (K8s DNS names)
+services:
+  auth: http://auth-service:8084
+  logProcessor: http://log-processor:8082
+  logIngestion: http://log-ingestion:8081
+  alert: http://alert-service:8083
+  ml: http://ml-service:8000
+
+# Redis for rate limiting
+redis:
+  host: redis-master
+  port: 6379
+
+# Secret name for JWT and Redis credentials (from install-dependencies.sh)
 secrets:
-  jwtSecret: ""
-  corsAllowedOrigins: "https://ai-monitoring.example.com"
+  commonSecretName: ai-monitoring-secrets
+
+startupProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 24
 
 livenessProbe:
   httpGet:
     path: /actuator/health/liveness
     port: http
-  initialDelaySeconds: 60
-  periodSeconds: 10
+  initialDelaySeconds: 0
+  periodSeconds: 15
+  timeoutSeconds: 10
+  failureThreshold: 5
 
 readinessProbe:
   httpGet:
     path: /actuator/health/readiness
     port: http
-  initialDelaySeconds: 30
-  periodSeconds: 5
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6

@@ -21,14 +21,19 @@ import java.util.Map;
 @RequestMapping("/fallback")
 public class FallbackController {
 
+    private static final String KEY_STATUS = "status";
+    private static final String KEY_MESSAGE = "message";
+    private static final String KEY_TIMESTAMP = "timestamp";
+    private static final String STATUS_SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE";
+
     @PostMapping("/log-ingestion")
     public ResponseEntity<Map<String, Object>> logIngestionFallback() {
         log.warn("Log Ingestion Service is currently unavailable - Circuit breaker activated");
         
         Map<String, Object> response = new HashMap<>();
-        response.put("status", "SERVICE_UNAVAILABLE");
-        response.put("message", "Log Ingestion Service is temporarily unavailable. Please try again later.");
-        response.put("timestamp", Instant.now().toString());
+        response.put(KEY_STATUS, STATUS_SERVICE_UNAVAILABLE);
+        response.put(KEY_MESSAGE, "Log Ingestion Service is temporarily unavailable. Please try again later.");
+        response.put(KEY_TIMESTAMP, Instant.now().toString());
         response.put("service", "log-ingestion");
         
         return ResponseEntity
@@ -41,9 +46,9 @@ public class FallbackController {
         log.warn("Log Processor Service is currently unavailable - Circuit breaker activated");
         
         Map<String, Object> response = new HashMap<>();
-        response.put("status", "SERVICE_UNAVAILABLE");
-        response.put("message", "Log Processor Service is temporarily unavailable. Please try again later.");
-        response.put("timestamp", Instant.now().toString());
+        response.put(KEY_STATUS, STATUS_SERVICE_UNAVAILABLE);
+        response.put(KEY_MESSAGE, "Log Processor Service is temporarily unavailable. Please try again later.");
+        response.put(KEY_TIMESTAMP, Instant.now().toString());
         response.put("service", "log-processor");
         
         return ResponseEntity
@@ -56,9 +61,9 @@ public class FallbackController {
         log.warn("A backend service is currently unavailable - Circuit breaker activated");
         
         Map<String, Object> response = new HashMap<>();
-        response.put("status", "SERVICE_UNAVAILABLE");
-        response.put("message", "The requested service is temporarily unavailable. Please try again later.");
-        response.put("timestamp", Instant.now().toString());
+        response.put(KEY_STATUS, STATUS_SERVICE_UNAVAILABLE);
+        response.put(KEY_MESSAGE, "The requested service is temporarily unavailable. Please try again later.");
+        response.put(KEY_TIMESTAMP, Instant.now().toString());
         
         return ResponseEntity
                 .status(HttpStatus.SERVICE_UNAVAILABLE)

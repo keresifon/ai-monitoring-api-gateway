@@ -67,6 +67,11 @@ management:
   endpoint:
     health:
       show-details: always
+  health:
+    redis:
+      enabled: false
+    circuitbreakers:
+      enabled: false
 
 # Logging
 logging:
