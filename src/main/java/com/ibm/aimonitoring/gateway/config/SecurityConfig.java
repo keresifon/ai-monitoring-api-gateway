@@ -64,7 +64,8 @@ public class SecurityConfig {
         ServerWebExchangeMatcher exemptPaths = new OrServerWebExchangeMatcher(
             new PathPatternParserServerWebExchangeMatcher("/actuator/**"),
             new PathPatternParserServerWebExchangeMatcher("/api/v1/auth/**"),
-            new PathPatternParserServerWebExchangeMatcher("/api/auth/**")
+            new PathPatternParserServerWebExchangeMatcher("/api/auth/**"),
+            new PathPatternParserServerWebExchangeMatcher("/fallback/**")
         );
 
         return new AndServerWebExchangeMatcher(
