@@ -2,12 +2,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "api-gateway.fullname" . }}
+  namespace: ai-monitoring
   labels:
     {{- include "api-gateway.labels" . | nindent 4 }}
+    tier: gateway
 spec:
-  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "api-gateway.selectorLabels" . | nindent 6 }}
@@ -15,11 +15,8 @@ spec:
     metadata:
       labels:
         {{- include "api-gateway.selectorLabels" . | nindent 8 }}
+        tier: gateway
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       serviceAccountName: {{ include "api-gateway.serviceAccountName" . }}
       containers:
         - name: {{ .Chart.Name }}
@@ -30,20 +27,34 @@ spec:
               containerPort: 8080
               protocol: TCP
           env:
-            {{- range $key, $value := .Values.env }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.env.SPRING_PROFILES_ACTIVE | quote }}
+            - name: AUTH_SERVICE_URL
+              value: {{ .Values.services.auth | quote }}
+            - name: LOG_PROCESSOR_URL
+              value: {{ .Values.services.logProcessor | quote }}
+            - name: LOG_INGESTION_URL
+              value: {{ .Values.services.logIngestion | quote }}
+            - name: ALERT_SERVICE_URL
+              value: {{ .Values.services.alert | quote }}
+            - name: ML_SERVICE_URL
+              value: {{ .Values.services.ml | quote }}
+            - name: REDIS_HOST
+              value: {{ .Values.redis.host | quote }}
+            - name: REDIS_PORT
+              value: {{ .Values.redis.port | quote }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.commonSecretName }}
+                  key: redis-password
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "api-gateway.fullname" . }}-secrets
+                  name: {{ .Values.secrets.commonSecretName }}
                   key: jwt-secret
-            - name: CORS_ALLOWED_ORIGINS
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "api-gateway.fullname" . }}-secrets
-                  key: cors-allowed-origins
+          startupProbe:
+            {{- toYaml .Values.startupProbe | nindent 12 }}
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:
