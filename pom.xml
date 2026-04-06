@@ -23,7 +23,7 @@
         <spring-cloud.version>2024.0.3</spring-cloud.version>
         <commons-lang3.version>3.18.0</commons-lang3.version>
         <log4j.version>2.25.0</log4j.version>
-        <netty.version>4.1.131.Final</netty.version>
+        <netty.version>4.1.132.Final</netty.version>
         <logback.version>1.5.25</logback.version>
         <reactor-netty.version>1.2.8</reactor-netty.version>
         <sonar.organization>keresifon</sonar.organization>
@@ -155,7 +155,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <!-- Override netty to fix CVE-2025-55163, CVE-2025-24970, CVE-2025-58057, CVE-2025-67735, CVE-2025-25193, CVE-2025-58056 -->
+            <!-- Override netty: CVE-2026-33871, CVE-2026-33870 (4.1.132+) plus prior CVEs (2025-*) -->
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>

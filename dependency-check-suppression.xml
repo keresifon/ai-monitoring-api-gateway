@@ -13,7 +13,7 @@
         <notes><![CDATA[
         Netty is the underlying server for Spring Cloud Gateway via reactor-netty.
         These CVEs target specific server-side features (HTTP/2 rapid reset, native transport)
-        that are mitigated by our configuration. Using netty-bom 4.1.131.Final.
+        that are mitigated by our configuration. Using netty-bom 4.1.132.Final.
         Review when newer patched versions are available.
         ]]></notes>
         <packageUrl regex="true">^pkg:maven/io\.netty/netty\-.*@.*$</packageUrl>
