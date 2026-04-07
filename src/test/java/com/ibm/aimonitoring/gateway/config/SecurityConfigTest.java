@@ -46,6 +46,20 @@ class SecurityConfigTest {
     }
 
     @Test
+    void postToLogIngestionPath_doesNotRequireCsrf() {
+        String body = "{\"level\":\"INFO\",\"message\":\"csrf test\",\"service\":\"test\"}";
+        var result = webTestClient.post()
+                .uri("/api/v1/logs")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
+                .exchange()
+                .returnResult(Void.class);
+
+        assertThat(result.getStatus()).as("Should not get 403 CSRF on log ingestion path")
+                .isNotEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
     void getRequest_includesCsrfCookieWhenFilterRuns() {
         var responseHeaders = webTestClient.get()
                 .uri("/fallback/generic")

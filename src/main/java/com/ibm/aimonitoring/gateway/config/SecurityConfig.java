@@ -54,6 +54,8 @@ public class SecurityConfig {
      * Requires CSRF only for state-changing methods (POST, PUT, DELETE, PATCH)
      * on paths that are not exempt. Auth and actuator endpoints are exempt because
      * auth has no existing session to protect and actuator is internal management.
+     * Log ingestion is exempt: external agents and CLIs post JSON without browser cookies;
+     * search remains protected when using state-changing methods if added later.
      */
     private ServerWebExchangeMatcher csrfProtectionMatcher() {
         ServerWebExchangeMatcher stateChangingMethods = exchange ->
@@ -65,7 +67,8 @@ public class SecurityConfig {
             new PathPatternParserServerWebExchangeMatcher("/actuator/**"),
             new PathPatternParserServerWebExchangeMatcher("/api/v1/auth/**"),
             new PathPatternParserServerWebExchangeMatcher("/api/auth/**"),
-            new PathPatternParserServerWebExchangeMatcher("/fallback/**")
+            new PathPatternParserServerWebExchangeMatcher("/fallback/**"),
+            new PathPatternParserServerWebExchangeMatcher("/api/v1/logs")
         );
 
         return new AndServerWebExchangeMatcher(
