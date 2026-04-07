@@ -68,7 +68,8 @@ public class SecurityConfig {
             new PathPatternParserServerWebExchangeMatcher("/api/v1/auth/**"),
             new PathPatternParserServerWebExchangeMatcher("/api/auth/**"),
             new PathPatternParserServerWebExchangeMatcher("/fallback/**"),
-            new PathPatternParserServerWebExchangeMatcher("/api/v1/logs")
+            new PathPatternParserServerWebExchangeMatcher("/api/v1/logs"),
+            new PathPatternParserServerWebExchangeMatcher("/api/v1/logs/**")
         );
 
         return new AndServerWebExchangeMatcher(
