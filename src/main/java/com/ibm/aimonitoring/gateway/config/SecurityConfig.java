@@ -54,8 +54,9 @@ public class SecurityConfig {
      * Requires CSRF only for state-changing methods (POST, PUT, DELETE, PATCH)
      * on paths that are not exempt. Auth and actuator endpoints are exempt because
      * auth has no existing session to protect and actuator is internal management.
-     * Log ingestion is exempt: external agents and CLIs post JSON without browser cookies;
-     * search remains protected when using state-changing methods if added later.
+     * Log ingestion is exempt: external agents and CLIs post JSON without browser cookies.
+     * PathPatternParserServerWebExchangeMatcher uses pathWithinApplication(), which can differ
+     * from getPath().value() behind Spring Cloud Gateway, so ingestion uses an explicit matcher.
      */
     private ServerWebExchangeMatcher csrfProtectionMatcher() {
         ServerWebExchangeMatcher stateChangingMethods = exchange ->
@@ -68,14 +69,29 @@ public class SecurityConfig {
             new PathPatternParserServerWebExchangeMatcher("/api/v1/auth/**"),
             new PathPatternParserServerWebExchangeMatcher("/api/auth/**"),
             new PathPatternParserServerWebExchangeMatcher("/fallback/**"),
-            new PathPatternParserServerWebExchangeMatcher("/api/v1/logs"),
-            new PathPatternParserServerWebExchangeMatcher("/api/v1/logs/**")
+            logIngestionCsrfExemptMatcher()
         );
 
         return new AndServerWebExchangeMatcher(
             stateChangingMethods,
             new NegatedServerWebExchangeMatcher(exemptPaths)
         );
+    }
+
+    /**
+     * CSRF exemption for POST /api/v1/logs only (matches request path the gateway actually exposes).
+     */
+    private static ServerWebExchangeMatcher logIngestionCsrfExemptMatcher() {
+        return exchange -> {
+            if (!HttpMethod.POST.equals(exchange.getRequest().getMethod())) {
+                return ServerWebExchangeMatcher.MatchResult.notMatch();
+            }
+            String path = exchange.getRequest().getPath().value();
+            String uriPath = exchange.getRequest().getURI().getPath();
+            boolean ingest = "/api/v1/logs".equals(path) || "/api/v1/logs/".equals(path)
+                    || "/api/v1/logs".equals(uriPath) || "/api/v1/logs/".equals(uriPath);
+            return ingest ? ServerWebExchangeMatcher.MatchResult.match() : ServerWebExchangeMatcher.MatchResult.notMatch();
+        };
     }
 
     /**
