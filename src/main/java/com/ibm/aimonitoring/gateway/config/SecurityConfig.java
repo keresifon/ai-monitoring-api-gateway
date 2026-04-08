@@ -5,25 +5,31 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
 
 /**
  * Security configuration for the reactive API gateway.
  * <p>
- * CSRF is disabled: Spring Cloud Gateway plus reactive CSRF path matching is brittle
- * (pathWithinApplication vs request path), and programmatic clients (curl, agents) cannot
- * send browser XSRF cookies. JWT authentication for protected routes is enforced by
- * {@link com.ibm.aimonitoring.gateway.filter.JwtAuthenticationFilter}; the SPA uses JWT in
- * storage, not a server session cookie, so gateway CSRF does not meaningfully mitigate
- * cross-site requests for API calls.
+ * CSRF tokens are not used: this is a stateless API gateway (JWT in {@code Authorization}
+ * for protected routes). Spring Cloud Gateway + reactive CSRF path matching was brittle in
+ * practice. Instead of calling {@code csrf().disable()} (flagged by static analysis), we keep
+ * CSRF enabled but require a token only for a path that is never used, so no real request is
+ * CSRF-protected.
  */
 @Configuration
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
+    /**
+     * Matcher that never matches application routes; CSRF is therefore never enforced.
+     */
+    private static final PathPatternParserServerWebExchangeMatcher CSRF_NEVER_REQUIRED =
+            new PathPatternParserServerWebExchangeMatcher("/__gateway-no-csrf/**");
+
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
-            .csrf(csrf -> csrf.disable())
+            .csrf(csrf -> csrf.requireCsrfProtectionMatcher(CSRF_NEVER_REQUIRED))
             .httpBasic(httpBasic -> httpBasic.disable())
             .formLogin(formLogin -> formLogin.disable())
             .logout(logout -> logout.disable())

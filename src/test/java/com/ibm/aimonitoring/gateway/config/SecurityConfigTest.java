@@ -13,7 +13,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests for SecurityConfig (CSRF disabled; public routes must not return 403 from security).
+ * Tests for SecurityConfig (CSRF not enforced on real routes; public APIs must not return 403 from security).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
