@@ -42,3 +42,4 @@ venv/
 *.jar
 *.war
 *.ear
+SECURITY_UPDATES.md

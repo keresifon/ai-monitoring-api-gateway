@@ -13,7 +13,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests for SecurityConfig - CSRF exemption and filter behavior.
+ * Tests for SecurityConfig (CSRF not enforced on real routes; public APIs must not return 403 from security).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
@@ -25,7 +25,7 @@ class SecurityConfigTest {
     private WebTestClient webTestClient;
 
     @Test
-    void getRequest_safeMethod_doesNotRequireCsrf() {
+    void getRequest_actuatorHealth_ok() {
         webTestClient.get()
                 .uri("/actuator/health")
                 .exchange()
@@ -33,7 +33,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    void postToExemptAuthPath_doesNotRequireCsrf() {
+    void postToAuthLogin_notForbiddenBySecurity() {
         var result = webTestClient.post()
                 .uri("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -41,21 +41,21 @@ class SecurityConfigTest {
                 .exchange()
                 .returnResult(Void.class);
 
-        assertThat(result.getStatus()).as("Should not get 403 CSRF on exempt auth path")
+        assertThat(result.getStatus()).as("Should not get 403 from gateway security")
                 .isNotEqualTo(HttpStatus.FORBIDDEN);
     }
 
     @Test
-    void getRequest_includesCsrfCookieWhenFilterRuns() {
-        var responseHeaders = webTestClient.get()
-                .uri("/fallback/generic")
+    void postToLogIngestion_notForbiddenBySecurity() {
+        String body = "{\"level\":\"INFO\",\"message\":\"test\",\"service\":\"test\"}";
+        var result = webTestClient.post()
+                .uri("/api/v1/logs")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
                 .exchange()
-                .expectStatus().isEqualTo(503) // Fallback returns 503
-                .returnResult(Void.class)
-                .getResponseHeaders();
+                .returnResult(Void.class);
 
-        assertThat(responseHeaders.get("Set-Cookie"))
-                .as("XSRF-TOKEN cookie should be set by CSRF filter")
-                .anyMatch(cookie -> cookie.startsWith("XSRF-TOKEN="));
+        assertThat(result.getStatus()).as("Should not get 403 from gateway security")
+                .isNotEqualTo(HttpStatus.FORBIDDEN);
     }
 }

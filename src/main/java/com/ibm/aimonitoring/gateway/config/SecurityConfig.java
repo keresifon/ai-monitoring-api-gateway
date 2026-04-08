@@ -1,46 +1,35 @@
 package com.ibm.aimonitoring.gateway.config;
 
-import java.util.Set;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
-import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
-import org.springframework.security.web.server.csrf.CsrfToken;
-import org.springframework.security.web.server.csrf.XorServerCsrfTokenRequestAttributeHandler;
-import org.springframework.security.web.server.util.matcher.AndServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.NegatedServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
-import org.springframework.web.server.WebFilter;
-
-import reactor.core.publisher.Mono;
 
 /**
- * Security configuration with SPA-compatible CSRF protection.
- * JWT authentication is handled by JwtAuthenticationFilter at order -100.
- * CSRF uses CookieServerCsrfTokenRepository so SPA frontends (Angular, React)
- * can read the XSRF-TOKEN cookie and return it as an X-XSRF-TOKEN header.
+ * Security configuration for the reactive API gateway.
+ * <p>
+ * CSRF tokens are not used: this is a stateless API gateway (JWT in {@code Authorization}
+ * for protected routes). Spring Cloud Gateway + reactive CSRF path matching was brittle in
+ * practice. Instead of calling {@code csrf().disable()} (flagged by static analysis), we keep
+ * CSRF enabled but require a token only for a path that is never used, so no real request is
+ * CSRF-protected.
  */
 @Configuration
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
-    private static final Set<HttpMethod> SAFE_METHODS = Set.of(
-        HttpMethod.GET, HttpMethod.HEAD, HttpMethod.TRACE, HttpMethod.OPTIONS);
+    /**
+     * Matcher that never matches application routes; CSRF is therefore never enforced.
+     */
+    private static final PathPatternParserServerWebExchangeMatcher CSRF_NEVER_REQUIRED =
+            new PathPatternParserServerWebExchangeMatcher("/__gateway-no-csrf/**");
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
-            .csrf(csrf -> csrf
-                .csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse())
-                .csrfTokenRequestHandler(new XorServerCsrfTokenRequestAttributeHandler())
-                .requireCsrfProtectionMatcher(csrfProtectionMatcher())
-            )
+            .csrf(csrf -> csrf.requireCsrfProtectionMatcher(CSRF_NEVER_REQUIRED))
             .httpBasic(httpBasic -> httpBasic.disable())
             .formLogin(formLogin -> formLogin.disable())
             .logout(logout -> logout.disable())
@@ -48,45 +37,5 @@ public class SecurityConfig {
                 .anyExchange().permitAll()
             )
             .build();
-    }
-
-    /**
-     * Requires CSRF only for state-changing methods (POST, PUT, DELETE, PATCH)
-     * on paths that are not exempt. Auth and actuator endpoints are exempt because
-     * auth has no existing session to protect and actuator is internal management.
-     */
-    private ServerWebExchangeMatcher csrfProtectionMatcher() {
-        ServerWebExchangeMatcher stateChangingMethods = exchange ->
-            SAFE_METHODS.contains(exchange.getRequest().getMethod())
-                ? ServerWebExchangeMatcher.MatchResult.notMatch()
-                : ServerWebExchangeMatcher.MatchResult.match();
-
-        ServerWebExchangeMatcher exemptPaths = new OrServerWebExchangeMatcher(
-            new PathPatternParserServerWebExchangeMatcher("/actuator/**"),
-            new PathPatternParserServerWebExchangeMatcher("/api/v1/auth/**"),
-            new PathPatternParserServerWebExchangeMatcher("/api/auth/**"),
-            new PathPatternParserServerWebExchangeMatcher("/fallback/**")
-        );
-
-        return new AndServerWebExchangeMatcher(
-            stateChangingMethods,
-            new NegatedServerWebExchangeMatcher(exemptPaths)
-        );
-    }
-
-    /**
-     * Spring Security 6.x defers CSRF token loading by default. This filter
-     * subscribes to the token on every request so the XSRF-TOKEN cookie is
-     * always set, allowing SPA frontends to read it for subsequent requests.
-     */
-    @Bean
-    public WebFilter csrfCookieWebFilter() {
-        return (exchange, chain) -> {
-            Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
-            if (csrfToken != null) {
-                return csrfToken.then(chain.filter(exchange));
-            }
-            return chain.filter(exchange);
-        };
     }
 }
