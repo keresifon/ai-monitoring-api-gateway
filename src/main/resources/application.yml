@@ -40,6 +40,28 @@ spring:
                 name: logProcessorCircuitBreaker
                 fallbackUri: forward:/fallback/log-processor
         
+        # Log export (CSV/JSON) — must be before log-ingestion /api/v1/logs/**
+        - id: log-export-service
+          uri: ${LOG_PROCESSOR_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/logs/export/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: logProcessorCircuitBreaker
+                fallbackUri: forward:/fallback/log-processor
+        
+        # Service name list for log filters (Log Processor)
+        - id: log-services-service
+          uri: ${LOG_PROCESSOR_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/logs/services
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: logProcessorCircuitBreaker
+                fallbackUri: forward:/fallback/log-processor
+        
         # Log Ingestion Service Routes
         - id: log-ingestion-service
           uri: ${LOG_INGESTION_URL:http://localhost:8081}

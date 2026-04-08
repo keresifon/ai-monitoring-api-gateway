@@ -100,7 +100,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                path.startsWith("/actuator/") ||
                path.equals("/") ||
                path.startsWith("/fallback/") ||
-               (path.startsWith("/api/v1/logs") && !path.startsWith("/api/v1/logs/search")) || // Allow log ingestion, but require auth for search
+               (path.startsWith("/api/v1/logs")
+                   && !path.startsWith("/api/v1/logs/search")
+                   && !path.startsWith("/api/v1/logs/export")
+                   && !path.startsWith("/api/v1/logs/services")) || // Ingestion public; search/export/services require JWT
                path.startsWith("/api/v1/dashboard/"); // Allow dashboard endpoints (public read access)
     }
 
