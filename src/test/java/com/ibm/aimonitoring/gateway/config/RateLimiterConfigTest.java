@@ -4,7 +4,6 @@ import java.net.InetSocketAddress;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
-import org.springframework.http.HttpHeaders;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 
@@ -19,7 +18,7 @@ class RateLimiterConfigTest {
         KeyResolver resolver = new RateLimiterConfig().rateLimiterKeyResolver();
 
         MockServerHttpRequest request = MockServerHttpRequest.post("/api/v1/logs")
-                .header(HttpHeaders.X_FORWARDED_FOR, "203.0.113.1, 10.0.0.1")
+                .header("X-Forwarded-For", "203.0.113.1, 10.0.0.1")
                 .build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
